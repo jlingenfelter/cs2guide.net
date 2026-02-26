@@ -1,0 +1,99 @@
+---
+import Base from '../../layouts/Base.astro';
+import { faqCategories, faqTopics, getTopicsByCategory, getCategoryBySlug } from '../../lib/data';
+
+const SITE = 'https://cs2guide.net';
+
+export function getStaticPaths() {
+  return faqTopics.map(t => {
+    const cat = getCategoryBySlug(t.category);
+    return {
+      params: { category: t.category, topic: t.slug },
+      props: { topic: t, category: cat }
+    };
+  });
+}
+
+const { topic, category } = Astro.props;
+const title = `${topic.title} - CS2 FAQ | CS2 Guide`;
+const desc = `${topic.quickAnswer} Full detailed answer with key points and common mistakes for Counter-Strike 2.`;
+const canonical = `${SITE}/${topic.category}/${topic.slug}/`;
+
+const faqSchema = JSON.stringify({
+  "@context":"https://schema.org","@type":"FAQPage",
+  "mainEntity":[{
+    "@type":"Question","name":topic.title,
+    "acceptedAnswer":{"@type":"Answer","text":topic.quickAnswer + ' ' + topic.keyPoints.join('. ')}
+  }]
+});
+
+const breadcrumbSchema = JSON.stringify({
+  "@context":"https://schema.org","@type":"BreadcrumbList",
+  "itemListElement":[
+    {"@type":"ListItem","position":1,"name":"Home","item":SITE+"/"},
+    {"@type":"ListItem","position":2,"name":category?.name || topic.category,"item":SITE+"/"+topic.category+"/"},
+    {"@type":"ListItem","position":3,"name":topic.title}
+  ]
+});
+
+const relatedTopics = getTopicsByCategory(topic.category).filter(t => t.slug !== topic.slug).slice(0, 8);
+const otherCategories = faqCategories.filter(c => c.slug !== topic.category).slice(0, 6);
+---
+<Base title={title} desc={desc} canonical={canonical} faq={faqSchema} breadcrumb={breadcrumbSchema}>
+
+<div class="breadcrumb">
+  <a href="/">Home</a> <span>›</span>
+  <a href={`/${topic.category}/`}>{category?.name || topic.category}</a> <span>›</span>
+  {topic.title}
+</div>
+
+<h1>{topic.title}</h1>
+
+<div class="quick-answer" style="margin-bottom:1.5rem">
+  <strong>Quick Answer:</strong> {topic.quickAnswer}
+</div>
+
+{topic.questions.length > 0 && (
+  <div class="related-questions">
+    <p style="font-size:0.85rem;margin-bottom:0.3rem;color:var(--muted)">People also ask:</p>
+    {topic.questions.map(q => <span class="tag">{q}</span>)}
+  </div>
+)}
+
+<div class="answer-box">
+  <Fragment set:html={topic.answer} />
+</div>
+
+<div class="key-points">
+  <h2>Key Points</h2>
+  <ul>
+    {topic.keyPoints.map(kp => <li>{kp}</li>)}
+  </ul>
+</div>
+
+{topic.commonMistakes?.length > 0 && (
+  <div class="mistakes">
+    <h2>Common Mistakes to Avoid</h2>
+    <ul>
+      {topic.commonMistakes.map(m => <li>{m}</li>)}
+    </ul>
+  </div>
+)}
+
+{relatedTopics.length > 0 && (
+  <div class="internal-links">
+    <h3>Related Questions in {category?.name}</h3>
+    <ul>
+      {relatedTopics.map(t => <li><a href={`/${t.category}/${t.slug}/`}>{t.title}</a></li>)}
+    </ul>
+  </div>
+)}
+
+<div class="internal-links">
+  <h3>Browse Other Categories</h3>
+  <ul>
+    {otherCategories.map(c => <li><a href={`/${c.slug}/`}>{c.name}</a></li>)}
+  </ul>
+</div>
+
+</Base>

@@ -1,0 +1,65 @@
+---
+import Base from '../../layouts/Base.astro';
+import { faqCategories, faqTopics, getTopicsByCategory } from '../../lib/data';
+
+const SITE = 'https://cs2guide.net';
+
+export function getStaticPaths() {
+  return faqCategories.map(cat => ({
+    params: { category: cat.slug },
+    props: { category: cat }
+  }));
+}
+
+const { category } = Astro.props;
+const topics = getTopicsByCategory(category.slug);
+const title = `${category.metaTitle} - ${topics.length} Answers | CS2 Guide`;
+const desc = `${category.metaDescription}. ${topics.length} detailed answers covering ${category.name.toLowerCase()} in Counter-Strike 2.`;
+const canonical = `${SITE}/${category.slug}/`;
+
+const faqSchema = JSON.stringify({
+  "@context":"https://schema.org","@type":"FAQPage",
+  "mainEntity": topics.slice(0, 10).map(t => ({
+    "@type":"Question","name":t.title,
+    "acceptedAnswer":{"@type":"Answer","text":t.quickAnswer}
+  }))
+});
+
+const breadcrumbSchema = JSON.stringify({
+  "@context":"https://schema.org","@type":"BreadcrumbList",
+  "itemListElement":[
+    {"@type":"ListItem","position":1,"name":"Home","item":SITE+"/"},
+    {"@type":"ListItem","position":2,"name":category.name}
+  ]
+});
+
+const otherCategories = faqCategories.filter(c => c.slug !== category.slug);
+---
+<Base title={title} desc={desc} canonical={canonical} faq={faqSchema} breadcrumb={breadcrumbSchema}>
+
+<div class="breadcrumb"><a href="/">Home</a> <span>›</span> {category.name}</div>
+<h1>{category.name}</h1>
+<p>{category.description}. Browse {topics.length} detailed answers below.</p>
+
+<div class="topic-list">
+  {topics.map(t => (
+    <a href={`/${category.slug}/${t.slug}/`}>
+      <div class="card">
+        <h3>{t.title}</h3>
+        <div class="quick-answer"><strong>Quick answer:</strong> {t.quickAnswer}</div>
+        <div style="margin-top:0.5rem">
+          {t.keyPoints.slice(0, 3).map(kp => <span class="tag">{kp}</span>)}
+        </div>
+      </div>
+    </a>
+  ))}
+</div>
+
+<div class="internal-links">
+  <h3>Other Categories</h3>
+  <ul>
+    {otherCategories.map(c => <li><a href={`/${c.slug}/`}>{c.name} ({getTopicsByCategory(c.slug).length})</a></li>)}
+  </ul>
+</div>
+
+</Base>

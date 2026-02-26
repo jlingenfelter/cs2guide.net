@@ -1,0 +1,92 @@
+---
+import Base from '../layouts/Base.astro';
+import { faqCategories, faqTopics, getTopicsByCategory } from '../lib/data';
+
+const SITE = 'https://cs2guide.net';
+const title = 'CS2 FAQ Guide - Answers to Every Counter-Strike 2 Question';
+const desc = 'The most comprehensive CS2 FAQ and guide. Find answers to 150+ Counter-Strike 2 questions covering gameplay, settings, ranking, weapons, economy, and competitive play.';
+
+const faqSchema = JSON.stringify({
+  "@context":"https://schema.org","@type":"FAQPage",
+  "mainEntity": faqTopics.slice(0, 10).map(t => ({
+    "@type":"Question","name":t.title,
+    "acceptedAnswer":{"@type":"Answer","text":t.quickAnswer}
+  }))
+});
+
+const breadcrumbSchema = JSON.stringify({
+  "@context":"https://schema.org","@type":"BreadcrumbList",
+  "itemListElement":[{"@type":"ListItem","position":1,"name":"Home"}]
+});
+---
+<Base title={title} desc={desc} canonical={SITE+'/'} faq={faqSchema} breadcrumb={breadcrumbSchema}>
+
+<div class="hero">
+  <h1>CS2 FAQ Guide</h1>
+  <p>Answers to {faqTopics.length}+ Counter-Strike 2 questions. From getting started to advanced competitive mechanics, find the answer you need.</p>
+</div>
+
+<div class="search-box">
+  <input type="text" id="search" placeholder="Search questions... (e.g. sensitivity, ranking, FPS)" autocomplete="off"/>
+</div>
+
+<div id="search-results" style="display:none;margin:1rem 0"></div>
+
+<h2>Browse by Category</h2>
+<div class="grid">
+  {faqCategories.map(cat => {
+    const topics = getTopicsByCategory(cat.slug);
+    return (
+      <a href={`/${cat.slug}/`} class="card" style="text-decoration:none">
+        <h3>{cat.name}</h3>
+        <p>{cat.description}</p>
+        <span class="tag tag-count">{topics.length} answers</span>
+      </a>
+    );
+  })}
+</div>
+
+<h2>Most Popular Questions</h2>
+<div class="topic-list">
+  {faqTopics.slice(0, 20).map(t => (
+    <a href={`/${t.category}/${t.slug}/`}>
+      <div class="card">
+        <h3>{t.title}</h3>
+        <div class="quick-answer"><strong>Quick answer:</strong> {t.quickAnswer}</div>
+      </div>
+    </a>
+  ))}
+</div>
+
+<h2>All Categories</h2>
+<div class="category-nav">
+  {faqCategories.map(cat => (
+    <a href={`/${cat.slug}/`}>{cat.name} ({getTopicsByCategory(cat.slug).length})</a>
+  ))}
+</div>
+
+<script is:inline define:vars={{ topics: faqTopics.map(t => ({ slug: t.slug, title: t.title, quick: t.quickAnswer, cat: t.category, questions: t.questions })) }}>
+const searchInput = document.getElementById('search');
+const resultsDiv = document.getElementById('search-results');
+if (searchInput && resultsDiv) {
+  searchInput.addEventListener('input', function() {
+    const q = this.value.toLowerCase().trim();
+    if (q.length < 2) { resultsDiv.style.display = 'none'; return; }
+    const matches = topics.filter(t =>
+      t.title.toLowerCase().includes(q) ||
+      t.quick.toLowerCase().includes(q) ||
+      t.questions.some(qq => qq.toLowerCase().includes(q))
+    ).slice(0, 15);
+    if (matches.length === 0) {
+      resultsDiv.innerHTML = '<p style="color:var(--muted)">No results found. Try different keywords.</p>';
+    } else {
+      resultsDiv.innerHTML = matches.map(t =>
+        `<a href="/${t.cat}/${t.slug}/" style="text-decoration:none"><div class="card"><h3 style="color:var(--text);margin:0 0 0.3rem">${t.title}</h3><div class="quick-answer"><strong>Quick answer:</strong> ${t.quick}</div></div></a>`
+      ).join('');
+    }
+    resultsDiv.style.display = 'block';
+  });
+}
+</script>
+
+</Base>
